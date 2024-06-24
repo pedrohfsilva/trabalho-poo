@@ -8,12 +8,14 @@ def handle_client(client_socket):
             if not request:
                 break  # Se nenhuma requisição, saia do loop
 
-            input_data = request.replace(" ", "\n")
-            response = subprocess.run(['./gerencia-arquivo.exe'], input=input_data, text=True, capture_output=True)
+            print(f"Received request: {request}")  # Log recebimento
+
+            # Mantém os espaços na entrada
+            response = subprocess.run(['./gerencia-arquivo.exe'], input=request, text=True, capture_output=True)
             output = response.stdout
             error = response.stderr
 
-            print(f"Executed with input: {input_data}")
+            print(f"Executed with input: {request}")
             print("Output:")
             print(output)
             if error:

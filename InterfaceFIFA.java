@@ -4,6 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.Socket;
+
 public class InterfaceFIFA extends JFrame {
     private JTextField idCampo, ageCampo, nomeJogadorCampo, nacionalidadeCampo, nomeClubeCampo;
     private JPanel campoResultado;
@@ -51,7 +52,7 @@ public class InterfaceFIFA extends JFrame {
         campoResultado.setLayout(new BoxLayout(campoResultado, BoxLayout.Y_AXIS)); // Usar BoxLayout para alinhar os botões verticalmente
         JScrollPane scroll = new JScrollPane(campoResultado);
         scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
-    
+
         add(scroll, BorderLayout.CENTER); // Adicionar o scrollPane em vez de campoResultado diretamente|
 
         JMenuBar menuBar = new JMenuBar();
@@ -131,16 +132,19 @@ public class InterfaceFIFA extends JFrame {
                     if (socket != null && out != null) {
                         out.println(query);
                         out.flush();
-    
+
                         // Cria uma nova Thread para ler a resposta do servidor
                         new Thread(() -> {
                             StringBuilder resultado = new StringBuilder();
                             try {
-                                String resposta;
-                                while ((resposta = in.readLine()) != null) {
-                                    resultado.append(resposta).append("\n");
+                                char[] buffer = new char[1024];
+                                int charsRead;
+                                while ((charsRead = in.read(buffer)) != -1) {
+                                    resultado.append(buffer, 0, charsRead);
+                                    if (charsRead < buffer.length) break; // Assumir que a leitura foi concluída se menos caracteres do que o buffer foram lidos
                                 }
-    
+                                System.out.println("Resposta recebida: " + resultado.toString()); // Adicionar log
+
                                 // Utiliza o método SwingUtilities.invokeLater para garantir que a GUI seja atualizada corretamente na thread da GUI
                                 SwingUtilities.invokeLater(() -> {
                                     createListarDialog(resultado.toString());
@@ -151,7 +155,7 @@ public class InterfaceFIFA extends JFrame {
                                 });
                             }
                         }).start();
-    
+
                     } else {
                         JOptionPane.showMessageDialog(null, "Nenhum servidor conectado");
                     }
@@ -162,19 +166,19 @@ public class InterfaceFIFA extends JFrame {
                 JOptionPane.showMessageDialog(null, "Erro: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
-    
+
         private void createListarDialog(String resultado) {
             JDialog listarDialog = new JDialog();
             listarDialog.setTitle("Listar Jogadores");
             listarDialog.setSize(600, 900);
             listarDialog.setLayout(new BorderLayout());
-    
+
             JTextArea lisTextField = new JTextArea(resultado);
             JScrollPane scrollPane = new JScrollPane(lisTextField);  // Adiciona a JTextArea dentro de um JScrollPane
             listarDialog.add(scrollPane, BorderLayout.CENTER);
             listarDialog.setVisible(true);  // Torna o diálogo visível
         }
-    }    
+    }
 
     private class SearchButtonListener implements ActionListener {
         String camposBusca;
@@ -187,41 +191,41 @@ public class InterfaceFIFA extends JFrame {
             String nomeJogador = nomeJogadorCampo.getText().trim();
             String nacionalidade = nacionalidadeCampo.getText().trim();
             String nomeClube = nomeClubeCampo.getText().trim();
-    
+
             if (id.isEmpty() && age.isEmpty() && nomeJogador.isEmpty() && nacionalidade.isEmpty() && nomeClube.isEmpty()) {
                 JOptionPane.showMessageDialog(null, "Por favor, preencha pelo menos um campo de busca.");
                 return;
             }
-    
+
             String camposBusca = "";
             int quantidadeCampos = 0;
-    
-            if(!id.isEmpty()) {
+
+            if (!id.isEmpty()) {
                 camposBusca += "id " + id + " ";
                 quantidadeCampos++;
             }
-    
-            if(!age.isEmpty()) {
+
+            if (!age.isEmpty()) {
                 camposBusca += "idade " + age + " ";
                 quantidadeCampos++;
             }
-    
-            if(!nomeJogador.isEmpty()) {
+
+            if (!nomeJogador.isEmpty()) {
                 camposBusca += "nomeJogador \"" + nomeJogador + "\" ";
                 quantidadeCampos++;
             }
-    
-            if(!nacionalidade.isEmpty()) {
+
+            if (!nacionalidade.isEmpty()) {
                 camposBusca += "nacionalidade \"" + nacionalidade + "\" ";
                 quantidadeCampos++;
             }
-    
-            if(!nomeClube.isEmpty()) {
+
+            if (!nomeClube.isEmpty()) {
                 camposBusca += "nomeClube \"" + nomeClube + "\" ";
                 quantidadeCampos++;
             }
-    
-            if(fileDados != null && !fileDados.getName().isEmpty()) {
+
+            if (fileDados != null && !fileDados.getName().isEmpty()) {
                 buscar(quantidadeCampos, camposBusca);
             } else {
                 JOptionPane.showMessageDialog(null, "Nenhum arquivo selecionado\n");
@@ -235,16 +239,18 @@ public class InterfaceFIFA extends JFrame {
                 out.flush();
                 new Thread(() -> {
                     try {
-                        String resposta;
                         StringBuilder resultado = new StringBuilder();
-                        while ((resposta = in.readLine()) != null) {
-                            resultado.append(resposta).append("\n");
+                        char[] buffer = new char[1024];
+                        int charsRead;
+                        while ((charsRead = in.read(buffer)) != -1) {
+                            resultado.append(buffer, 0, charsRead);
+                            if (charsRead < buffer.length) break; // Assumir que a leitura foi concluída se menos caracteres do que o buffer foram lidos
                         }
+                        System.out.println("Resposta recebida: " + resultado.toString()); // Adicionar log
                         String[] jogadorResultado = resultado.toString().split("\n\n");
                         SwingUtilities.invokeLater(() -> {
-                            if (resultado.toString().equals("Registro inexistente\n")) {
+                            if ((resultado.toString().split("\n\n")[1]).equals("Registro inexistente.")) {
                                 campoResultado.removeAll(); // Limpar o painel
-                                campoResultado.add(new JLabel("Registro inexistente"));
                             } else {
                                 campoResultado.removeAll(); // Limpar o painel antes de adicionar novos botões
                                 for (int i = 1; i < jogadorResultado.length; i++) {
@@ -280,13 +286,13 @@ public class InterfaceFIFA extends JFrame {
             String nomeJogador = jogadorInfo[0].split(": ")[1];
             String nacionalidade = jogadorInfo[1].split(": ")[1];
             String nomeClube = jogadorInfo[2].split(": ")[1];
-    
+
             JPanel dataPanel = new JPanel(new GridLayout(0, 2));
             JTextField nameField = new JTextField(nomeJogador, 10);
             JTextField nacionalidadeField = new JTextField(nacionalidade, 10);
             JTextField clubField = new JTextField(nomeClube, 10);
             JTextField idadeField = new JTextField(idade, 10);
-    
+
             dataPanel.add(new JLabel("Nome:"));
             dataPanel.add(nameField);
             dataPanel.add(new JLabel("Nacionalidade:"));
@@ -295,34 +301,33 @@ public class InterfaceFIFA extends JFrame {
             dataPanel.add(clubField);
             dataPanel.add(new JLabel("Idade:"));
             dataPanel.add(idadeField);
-    
+
             JPanel buttonsPanel = new JPanel();
             JButton saveButton = new JButton("Salvar");
             JButton deleteButton = new JButton("Remover");
-    
+
             saveButton.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent e) {
-                    EditarJogador(id, idade, nomeJogador, nacionalidade, nomeClube);
-                    buscar(quantidadeCampos, camposBusca);
+                    EditarJogador(id, idadeField.getText(), nameField.getText(), nacionalidadeField.getText(), clubField.getText());
+                    // buscar(quantidadeCampos, camposBusca);
                     JOptionPane.showMessageDialog(null, "Jogador alterado com sucesso");
                 }
             });
-    
+
             deleteButton.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent e) {
                     ExcluirJogador(id);
                     playerDialog.dispose();
-                    buscar(quantidadeCampos, camposBusca);
                     JOptionPane.showMessageDialog(null, "Jogador removido com sucesso");
                 }
             });
-    
+
             buttonsPanel.add(saveButton);
             buttonsPanel.add(deleteButton);
-    
+
             playerDialog.add(dataPanel, BorderLayout.CENTER);
             playerDialog.add(buttonsPanel, BorderLayout.SOUTH);
-            
+
             playerDialog.setLocationRelativeTo(null); // Centraliza o diálogo
             playerDialog.setModal(true); // Define o diálogo como modal
             playerDialog.setVisible(true); // Exibe o diálogo
@@ -332,9 +337,32 @@ public class InterfaceFIFA extends JFrame {
             try {
                 if (fileDados != null && fileIndice != null && !fileDados.getName().isEmpty() && !fileIndice.getName().isEmpty()) {
                     String query = "5 " + fileDados.getName() + " " + fileIndice.getName() + " 1\n1 " + "id " + id + "\n";
+                    System.out.println(query);
                     if (socket != null && out != null) {
                         out.println(query);
                         out.flush();
+
+                        new Thread(() -> {
+                            StringBuilder resultado = new StringBuilder();
+                            try {
+                                char[] buffer = new char[1024];
+                                int charsRead;
+                                while ((charsRead = in.read(buffer)) != -1) {
+                                    resultado.append(buffer, 0, charsRead);
+                                    if (charsRead < buffer.length) break; // Assumir que a leitura foi concluída se menos caracteres do que o buffer foram lidos
+                                }
+                                System.out.println("Resposta recebida: " + resultado.toString()); // Adicionar log
+
+                                // Utiliza o método SwingUtilities.invokeLater para garantir que a GUI seja atualizada corretamente na thread da GUI
+                                SwingUtilities.invokeLater(() -> {
+                                    
+                                });
+                            } catch (IOException ex) {
+                                SwingUtilities.invokeLater(() -> {
+                                    JOptionPane.showMessageDialog(null, "Erro ao ler a resposta: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                                });
+                            }
+                        }).start();
                     } else {
                         JOptionPane.showMessageDialog(null, "Nenhum servidor conectado");
                     }
@@ -351,9 +379,32 @@ public class InterfaceFIFA extends JFrame {
             try {
                 if (fileDados != null && fileIndice != null && !fileDados.getName().isEmpty() && !fileIndice.getName().isEmpty()) {
                     String query = "6 " + fileDados.getName() + " " + fileIndice.getName() + " 1\n" + id + " " + idade + " \"" + nomeJogador + "\" \"" + nacionalidade + "\" \"" + nomeClube + "\"\n";
+                    System.out.println(query); // Adicionar log
                     if (socket != null && out != null) {
                         out.println(query);
                         out.flush();
+
+                        new Thread(() -> {
+                            StringBuilder resultado = new StringBuilder();
+                            try {
+                                char[] buffer = new char[1024];
+                                int charsRead;
+                                while ((charsRead = in.read(buffer)) != -1) {
+                                    resultado.append(buffer, 0, charsRead);
+                                    if (charsRead < buffer.length) break; // Assumir que a leitura foi concluída se menos caracteres do que o buffer foram lidos
+                                }
+                                System.out.println("Resposta recebida: " + resultado.toString()); // Adicionar log
+
+                                // Utiliza o método SwingUtilities.invokeLater para garantir que a GUI seja atualizada corretamente na thread da GUI
+                                SwingUtilities.invokeLater(() -> {
+                                    
+                                });
+                            } catch (IOException ex) {
+                                SwingUtilities.invokeLater(() -> {
+                                    JOptionPane.showMessageDialog(null, "Erro ao ler a resposta: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+                                });
+                            }
+                        }).start();
                     } else {
                         JOptionPane.showMessageDialog(null, "Nenhum servidor conectado");
                     }
